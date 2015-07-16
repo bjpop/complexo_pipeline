@@ -110,8 +110,79 @@ class Stages(object):
                             one_k_g_grch37_indels=one_k_g_grch37_indels,
                             interval_grch37=interval_grch37,
                             out=intervals_out)
-        # Bit of room between Java's max heap memory and what was requested.
-        # Allows for other Java memory usage, such as stack.
         java_heap_mem = mem - 2
         command = java_command('$GATK_HOME/GenomeAnalysisTK.jar', java_heap_mem, gatk_args)
         run_stage(self.state, 'chrom_intervals_gatk', command)
+
+
+    def local_realignment_gatk(self, inputs, bam_out):
+        '''Local realign reads using GATK'''
+        target_intervals_in, [bam_in, reference_in] = inputs
+        mem = int(self.state.config.get_stage_option('local_realignment_gatk', 'mem'))
+        mills_grch37 = self.state.config.get_option('mills_grch37')
+        one_k_g_grch37_indels = self.state.config.get_option('one_k_g_grch37_indels')
+        interval_grch37 = self.state.config.get_option('interval_grch37')
+        gatk_args = "-T IndelRealigner -R {reference} -I {bam} -L {interval_grch37} " \
+                    "-targetIntervals {target_intervals} -known {mills_grch37} " \
+                    "-known {one_k_g_grch37_indels} " \
+                    "-o {out}".format(reference=reference_in, bam=bam_in,
+                            mills_grch37=mills_grch37,
+                            one_k_g_grch37_indels=one_k_g_grch37_indels,
+                            interval_grch37=interval_grch37,
+                            target_intervals=target_intervals_in,
+                            out=bam_out)
+        java_heap_mem = mem - 2
+        command = java_command('$GATK_HOME/GenomeAnalysisTK.jar', java_heap_mem, gatk_args)
+        run_stage(self.state, 'local_realignment_gatk', command)
+
+
+    # XXX I'm not sure that --num_cpu_threads_per_data_thread has any benefit here
+    def base_recalibration_gatk(self, inputs, outputs):
+        '''Base recalibration using GATK'''
+        bam_in, [reference_in] = inputs
+        csv_out, log_out = outputs
+        mem = int(self.state.config.get_stage_option('base_recalibration_gatk', 'mem'))
+        mills_grch37 = self.state.config.get_option('mills_grch37')
+        one_k_g_grch37_indels = self.state.config.get_option('one_k_g_grch37_indels')
+        dbsnp_grch37 = self.state.config.get_option('dbsnp_grch37')
+        gatk_args = "-T BaseRecalibrator -R {reference} -I {bam} " \
+                    "--num_cpu_threads_per_data_thread 4 --knownSites {dbsnp_grch37} " \
+                    "--knownSites {mills_grch37} --knownSites {one_k_g_grch37_indels} " \
+                    "-log {log} -o {out}".format(reference=reference_in, bam=bam_in,
+                            mills_grch37=mills_grch37, dbsnp_grch37=dbsnp_grch37,
+                            one_k_g_grch37_indels=one_k_g_grch37_indels,
+                            log=log_out, out=csv_out)
+        java_heap_mem = mem - 2
+        command = java_command('$GATK_HOME/GenomeAnalysisTK.jar', java_heap_mem, gatk_args)
+        run_stage(self.state, 'base_recalibration_gatk', command)
+
+
+    # XXX I'm not sure that --num_cpu_threads_per_data_thread has any benefit here
+    def print_reads_gatk(self, inputs, bam_out):
+        '''Print reads using GATK'''
+        [csv_in, _log], [bam_in, reference_in] = inputs
+        mem = int(self.state.config.get_stage_option('print_reads_gatk', 'mem'))
+        gatk_args = "-T PrintReads -R {reference} -I {bam} --BQSR {recal_csv} " \
+                    "-o {out} --num_cpu_threads_per_data_thread 4".format(reference=reference_in,
+                            bam=bam_in, recal_csv=csv_in, out=bam_out)
+        java_heap_mem = mem - 2
+        command = java_command('$GATK_HOME/GenomeAnalysisTK.jar', java_heap_mem, gatk_args)
+        run_stage(self.state, 'print_reads_gatk', command)
+
+
+    def call_variants_gatk(self, inputs, vcf_out):
+        '''Call variants using GATK'''
+        bam_in, [reference_in] = inputs
+        mem = int(self.state.config.get_stage_option('call_variants_gatk', 'mem'))
+        interval_grch37 = self.state.config.get_option('interval_grch37')
+        gatk_args = "-T HaplotypeCaller -R {reference} --min_base_quality_score 20 " \
+                    "--variant_index_parameter 128000 --emitRefConfidence GVCF " \
+                    "--standard_min_confidence_threshold_for_calling 30.0 " \
+                    "--num_cpu_threads_per_data_thread 8 " \
+                    "--variant_index_type LINEAR " \
+                    "--standard_min_confidence_threshold_for_emitting 30.0 " \
+                    "-I {bam} -L {interval_list} -o {out}".format(reference=reference_in,
+                            bam=bam_in, interval_list=interval_grch37, out=vcf_out)
+        java_heap_mem = mem - 2
+        command = java_command('$GATK_HOME/GenomeAnalysisTK.jar', java_heap_mem, gatk_args)
+        run_stage(self.state, 'call_variants_gatk', command)

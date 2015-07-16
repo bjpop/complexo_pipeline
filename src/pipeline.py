@@ -34,6 +34,7 @@ def make_pipeline(state):
         output=fastq_files)
 
     # Index the reference using BWA 
+    # XXX Maybe theses stages of indexing the reference should not be part of the pipeline?
     pipeline.transform(
         task_func=stages.index_reference_bwa,
         name='index_reference_bwa',
@@ -90,12 +91,60 @@ def make_pipeline(state):
         output=['.sort.dedup.bam', '.metricsdup'])
 
     # Generate chromosome intervals using GATK 
-    pipeline.transform(
+    (pipeline.transform(
         task_func=stages.chrom_intervals_gatk,
         name='chrom_intervals_gatk',
         input=output_from('mark_duplicates_picard'),
         filter=suffix('.sort.dedup.bam'),
         add_inputs=add_inputs([reference_file]),
         output='.chr.intervals')
+        .follows('index_reference_bwa')
+        .follows('index_reference_samtools'))
+
+    # Local realignment using GATK 
+    (pipeline.transform(
+        task_func=stages.local_realignment_gatk,
+        name='local_realignment_gatk',
+        input=output_from('chrom_intervals_gatk'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9]+).chr.intervals'),
+        add_inputs=add_inputs(['{path[0]}/{sample[0]}.sort.dedup.bam', reference_file]),
+        output='{path[0]}/{sample[0]}.sort.dedup.realn.bam')
+        .follows('mark_duplicates_picard')
+        .follows('index_reference_bwa')
+        .follows('index_reference_samtools'))
+
+    # Base recalibration using GATK 
+    (pipeline.transform(
+        task_func=stages.base_recalibration_gatk,
+        name='base_recalibration_gatk',
+        input=output_from('local_realignment_gatk'),
+        filter=suffix('.sort.dedup.realn.bam'),
+        add_inputs=add_inputs([reference_file]),
+        output=['.recal_data.csv', '.count_cov.log'])
+        .follows('index_reference_bwa')
+        .follows('index_reference_samtools'))
+
+    # Print reads using GATK 
+    (pipeline.transform(
+        task_func=stages.print_reads_gatk,
+        name='print_reads_gatk',
+        input=output_from('base_recalibration_gatk'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9]+).recal_data.csv'),
+        add_inputs=add_inputs(['{path[0]}/{sample[0]}.sort.dedup.realn.bam', reference_file]),
+        output='{path[0]}/{sample[0]}.sort.dedup.realn.recal.bam')
+        .follows('local_realignment_gatk')
+        .follows('index_reference_bwa')
+        .follows('index_reference_samtools'))
+
+    # Call variants using GATK 
+    (pipeline.transform(
+        task_func=stages.call_variants_gatk,
+        name='call_variants_gatk',
+        input=output_from('print_reads_gatk'),
+        filter=suffix('.sort.dedup.realn.recal.bam'),
+        add_inputs=add_inputs([reference_file]),
+        output='.raw.snps.indels.gvcf')
+        .follows('index_reference_bwa')
+        .follows('index_reference_samtools'))
 
     return pipeline
