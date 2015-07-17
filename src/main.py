@@ -31,7 +31,7 @@ DEFAULT_CONFIG_FILE = 'pipeline.config'
 
 def parse_command_line():
     '''Parse the command line arguments of the pipeline'''
-    parser = cmdline.get_argparse(description='Colorectal cancer pipeline',
+    parser = cmdline.get_argparse(description='Variant calling pipeline',
         ignored_args = ["version"] )
     parser.add_argument('--config', type=str, default=DEFAULT_CONFIG_FILE,
         help='Pipeline configuration file in YAML format, defaults to {}' \
