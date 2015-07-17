@@ -2,7 +2,7 @@
 
 Author: Bernie Pope (bjpope@unimelb.edu.au)
 
-Crpipe is based on the [Ruffus](http://www.ruffus.org.uk/) library for writing bioinformatics pipelines. Its features include:
+complexo_pipeline is based on the [Ruffus](http://www.ruffus.org.uk/) library for writing bioinformatics pipelines. Its features include:
 
  * Job submission on a cluster using DRMAA (currently only tested with SLURM).
  * Job dependency calculation and checkpointing.
@@ -17,7 +17,7 @@ Crpipe is based on the [Ruffus](http://www.ruffus.org.uk/) library for writing b
 
 #### External dependencies
 
-`crpipe` depends on the following programs and libraries:
+`complexo_pipeline` depends on the following programs and libraries:
 
  * [python](https://www.python.org/download/releases/2.7.5/) (version 2.7.5)
  * [DRMAA](http://www.drmaa.org/) for submitting jobs to the cluster (it uses the Python wrapper to do this). 
@@ -36,15 +36,15 @@ I recommend using a virtual environment:
 
 ```
 cd /place/to/install
-virtualenv crpipe
-source crpipe/bin/activate
-pip install -U https://github.com/bjpop/crpipe
+virtualenv complexo_pipeline
+source complexo_pipeline/bin/activate
+pip install -U https://github.com/bjpop/complexo_pipeline
 ```
 
 If you don't want to use a virtual environment then you can just install with pip:
 
 ```
-pip install -U https://github.com/bjpop/crpipe
+pip install -U https://github.com/bjpop/complexo_pipeline
 ```
 
 ## Worked example
@@ -55,15 +55,15 @@ The `example` directory in the source distribution contains a small dataset to i
 
 ```
 cd /path/to/test/directory
-git clone https://github.com/bjpop/crpipe
+git clone https://github.com/bjpop/complexo_pipeline
 ```
 
-#### Install `crpipe` as described above
+#### Install `complexo_pipeline` as described above
 
 #### Get a reference genome.
 
 ```
-cd crpipe/example
+cd complexo_pipeline/example
 mkdir reference
 # copy your reference into this directory, or make a symbolic link
 # call it reference/genome.fa
@@ -77,22 +77,22 @@ For example (this will depend on your local settings):
 export DRMAA_LIBRARY_PATH=/usr/local/slurm_drmaa/1.0.7-gcc/lib/libdrmaa.so
 ```
 
-#### Run `crpipe` and ask it what it will do next
+#### Run `complexo_pipeline` and ask it what it will do next
 
 ```
-crpipe -n --verbose 3
+complexo_pipeline -n --verbose 3
 ```
 
 #### Generate a flowchart diagram
 
 ```
-crpipe --flowchart pipeline_flow.png --flowchart_format png
+complexo_pipeline --flowchart pipeline_flow.png --flowchart_format png
 ```
 
 #### Run the pipeline
 
 ```
-crpipe --use_threads --log_file pipeline.log --jobs 2 --verbose 3
+complexo_pipeline --use_threads --log_file pipeline.log --jobs 2 --verbose 3
 ```
 
 ## Usage
@@ -100,15 +100,17 @@ crpipe --use_threads --log_file pipeline.log --jobs 2 --verbose 3
 You can get a summary of the command line arguments like so:
 
 ```
-crpipe -h
-usage: crpipe [-h] [--verbose [VERBOSE]] [-L FILE] [-T JOBNAME] [-j N]
-              [--use_threads] [-n] [--touch_files_only] [--recreate_database]
-              [--checksum_file_name FILE] [--flowchart FILE]
-              [--key_legend_in_graph] [--draw_graph_horizontally]
-              [--flowchart_format FORMAT] [--forced_tasks JOBNAME]
-              [--config CONFIG] [--jobscripts JOBSCRIPTS] [--version]
+complexo_pipeline -h
+usage: complexo_pipeline [-h] [--verbose [VERBOSE]] [-L FILE] [-T JOBNAME]
+                         [-j N] [--use_threads] [-n] [--touch_files_only]
+                         [--recreate_database] [--checksum_file_name FILE]
+                         [--flowchart FILE] [--key_legend_in_graph]
+                         [--draw_graph_horizontally]
+                         [--flowchart_format FORMAT] [--forced_tasks JOBNAME]
+                         [--config CONFIG] [--jobscripts JOBSCRIPTS]
+                         [--version]
 
-Colorectal cancer pipeline
+Variant calling pipeline
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -134,9 +136,9 @@ pipeline arguments:
                         --jobs N with N > 1
   -n, --just_print      Don't actually run any commands; just print the
                         pipeline.
-  --touch_files_only    Don't actually run the pipeline; just 'touch' the
+  --touch_files_only    Don't actually run any commands; just 'touch' the
                         output for each task to make them appear up to date.
-  --recreate_database   Don't actually run the pipeline; just recreate the
+  --recreate_database   Don't actually run any commands; just recreate the
                         checksum database.
   --checksum_file_name FILE
                         Path of the checksum file.
@@ -147,9 +149,10 @@ pipeline arguments:
   --draw_graph_horizontally
                         Draw horizontal dependency graph.
   --flowchart_format FORMAT
-                        format of dependency graph file. Can be 'pdf', 'svg',
-                        'svgz' (Structured Vector Graphics), 'pdf', 'png'
-                        'jpg' (bitmap graphics) etc
+                        format of dependency graph file. Can be 'svg', 'svgz',
+                        'png', 'jpg', 'psd', 'tif', 'eps', 'pdf', or 'dot'.
+                        Defaults to the file name extension of --flowchart
+                        FILE.
   --forced_tasks JOBNAME
                         Task(s) which will be included even if they are up to
                         date.
@@ -171,8 +174,8 @@ defaults:
     # Maximum memory in gigabytes for a cluster job
     mem: 4
     # VLSCI account for quota
-    account: VR0002
-    queue: main
+    account: XXXX 
+    queue: YYYY 
     # Maximum allowed running time on the cluster in Hours:Minutes
     walltime: '1:00'
     # Load modules for running a command on the cluster.
@@ -186,48 +189,95 @@ defaults:
 # the pipeine to find the settings for the stage.
 
 stages:
-    # Run quality checks on the FASTQ files using fastQC
-    fastqc:
-        walltime: '10:00'
-        mem: 8
-        modules:
-            - 'fastqc/0.10.1'
-
-    # Index the hg19 human genome reference with BWA
+    # Index the human genome reference with BWA
     index_reference_bwa:
-        walltime: '10:00'
+        walltime: '5:00'
         mem: 8
         modules:
-            - 'bwa-intel/0.7.12' 
+            - 'bwa-intel/0.7.12'
     
     # Index the hg19 human genome reference with samtools
     index_reference_samtools:
-        walltime: '10:00'
-        mem: 8
+        walltime: '00:30'
+        mem: 8 
         modules:
             - 'samtools-intel/1.1'
     
     # Align paired end FASTQ files to the reference
     align_bwa:
         cores: 8
-        walltime: '48:00'
-        mem: 32
+        walltime: '8:00'
+        mem: 32 
         modules:
             - 'bwa-intel/0.7.12'
             - 'samtools-intel/1.1'
+   
+    # Sort the BAM file with Picard 
+    sort_bam_picard:
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'picard/1.127'
+    
+    # Mark duplicate reads in the BAM file with Picard
+    mark_duplicates_picard:
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'picard/1.127'
+    
+    # Generate chromosome intervals using GATK 
+    chrom_intervals_gatk:
+        cores: 8
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'gatk/3.3-0'
+    
+    # Local realignment using GATK
+    local_realignment_gatk:
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'gatk/3.3-0'
 
-# The Human Genome in FASTA format
+    # Local realignment using GATK
+    base_recalibration_gatk:
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'gatk/3.3-0'
 
-reference: /path/to/reference/genome.fa 
+    # Print reads using GATK
+    print_reads_gatk:
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'gatk/3.3-0'
+
+    # Call variants using GATK
+    call_variants_gatk:
+        cores: 8
+        walltime: '10:00'
+        mem: 30 
+        modules:
+            - 'gatk/3.3-0'
+
+mills_grch37: "reference/Mills_and_1000G_gold_standard.indels.b37.vcf"
+one_k_g_grch37_indels: "reference/1000G_phase1.indels.b37.vcf"
+interval_grch37: "reference/Broad.human.exome.b37.interval_list" 
+dbsnp_grch37: "reference/dbsnp_138.b37.vcf"
+ 
+
+# The Human Genome in FASTA format.
+
+ref_grch37: reference/human_g1k_v37_decoy.fasta 
 
 # The input FASTQ files.
 
 fastqs:
-   - /path/to/fastqs/sample1_R1.fastq.gz
-   - /path/to/fastqs/sample1_R2.fastq.gz
-   - /path/to/fastqs/sample2_R1.fastq.gz
-   - /path/to/fastqs/sample2_R2.fastq.gz
-
-read_groups:
-   'sample1': '@RG\tID:id1\tPU:pu1\tSM:sample1\tPL:ILLUMINA\tLB:lib_sample1'
-   'sample2': '@RG\tID:id2\tPU:pu2\tSM:sample2\tPL:ILLUMINA\tLB:lib_sample2'
+   - fastqs/sample1_R1.fastq.gz
+   - fastqs/sample1_R2.fastq.gz
+   - fastqs/sample2_R1.fastq.gz
+   - fastqs/sample2_R2.fastq.gz
+```
