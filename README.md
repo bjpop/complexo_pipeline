@@ -23,12 +23,10 @@ complexo_pipeline is based on the [Ruffus](http://www.ruffus.org.uk/) library fo
  * [DRMAA](http://www.drmaa.org/) for submitting jobs to the cluster (it uses the Python wrapper to do this). 
    You need to install your own `libdrama.so` for your local job submission system. There are versions
    available for common schedulers such as Torque/PBS, [SLURM](http://apps.man.poznan.pl/trac/slurm-drmaa) and so on.
- * [fastqc](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) (version 0.10.1)
- * [samtools](http://www.htslib.org/doc/samtools-1.1.html) version 1.1)
- * [bwa](http://bio-bwa.sourceforge.net/) for aligning reads to the reference genome (version 0.7.12)
- * [sambamba](http://lomereiter.github.io/sambamba/) for sorting bam files (version 0.5.4).
- * [lumpy](https://github.com/arq5x/lumpy-sv) for calling structural variants (version 0.2.11)
- * [svtyper](https://github.com/cc2qe/svtyper) for genotyping the structural variants (version 0.0.2)
+ * [bwa](http://bio-bwa.sourceforge.net/) for aligning reads to the reference genome (version 0.7.10)
+ * [gatk](https://www.broadinstitute.org/gatk/) Genome Analysis Toolkit (version 3.3-0)
+ * [samtools](http://www.htslib.org/) (version 0.1.2)
+ * [picard](http://broadinstitute.github.io/picard/) (version 1.127)
 
 You will need to install these dependencies yourself.
 
@@ -174,8 +172,8 @@ defaults:
     # Maximum memory in gigabytes for a cluster job
     mem: 4
     # VLSCI account for quota
-    account: XXXX 
-    queue: YYYY 
+    account: VRXXXX
+    queue: VRYYYY
     # Maximum allowed running time on the cluster in Hours:Minutes
     walltime: '1:00'
     # Load modules for running a command on the cluster.
@@ -194,7 +192,7 @@ stages:
         walltime: '5:00'
         mem: 8
         modules:
-            - 'bwa-intel/0.7.12'
+            - 'bwa-intel/0.7.10'
     
     # Index the hg19 human genome reference with samtools
     index_reference_samtools:
@@ -209,8 +207,8 @@ stages:
         walltime: '8:00'
         mem: 32 
         modules:
-            - 'bwa-intel/0.7.12'
-            - 'samtools-intel/1.1'
+            - 'bwa-intel/0.7.10'
+            - 'samtools-intel/0.1.2'
    
     # Sort the BAM file with Picard 
     sort_bam_picard:
