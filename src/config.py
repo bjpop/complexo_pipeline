@@ -22,6 +22,12 @@ class Config(object):
         self.config = config
         self.config_filename = config_filename
 
+    def get_options(self, *options):
+        num_options = len(options)
+        if num_options == 1:
+            return self.get_option(options[0])
+        else:
+            return (self.get_option(o) for o in options)
 
     def get_option(self, option):
         '''Retrieve a global option from the configuration'''
@@ -31,6 +37,12 @@ class Config(object):
             raise Exception("Unknown option: {}, not in configuration " \
                 "file: {}".format(option, self.config_filename))
 
+    def get_stage_options(self, stage, *options):
+        num_options = len(options)
+        if num_options == 1:
+            return self.get_stage_option(stage, options[0])
+        else:
+            return (self.get_stage_option(stage, o) for o in options)
 
     def get_stage_option(self, stage, option):
         '''Try to retrieve a configuration option for a particular stage.
