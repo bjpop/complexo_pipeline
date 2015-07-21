@@ -143,7 +143,7 @@ def make_pipeline(state):
         input=output_from('print_reads_gatk'),
         filter=suffix('.sort.dedup.realn.recal.bam'),
         add_inputs=add_inputs([reference_file]),
-        output='.raw.snps.indels.gvcf')
+        output='.raw.snps.indels.g.vcf')
         .follows('index_reference_bwa')
         .follows('index_reference_samtools'))
 
