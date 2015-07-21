@@ -140,7 +140,7 @@ class Stages(object):
                             interval_grch37=self.interval_grch37,
                             target_intervals=target_intervals_in,
                             out=bam_out)
-        run_gatk('local_realignment_gatk', gatk_args)
+        self.run_gatk('local_realignment_gatk', gatk_args)
 
 
     # XXX I'm not sure that --num_cpu_threads_per_data_thread has any benefit here
@@ -154,7 +154,7 @@ class Stages(object):
                             mills_grch37=self.mills_grch37, dbsnp_grch37=self.dbsnp_grch37,
                             one_k_g_grch37_indels=self.one_k_g_grch37_indels,
                             log=log_out, out=csv_out)
-        run_gatk('base_recalibration_gatk', gatk_args)
+        self.run_gatk('base_recalibration_gatk', gatk_args)
 
 
     # XXX I'm not sure that --num_cpu_threads_per_data_thread has any benefit here
@@ -164,7 +164,7 @@ class Stages(object):
         gatk_args = "-T PrintReads -R {reference} -I {bam} --BQSR {recal_csv} " \
                     "-o {out} --num_cpu_threads_per_data_thread 4".format(reference=self.reference,
                             bam=bam_in, recal_csv=csv_in, out=bam_out)
-        run_gatk('print_reads_gatk', gatk_args)
+        self.run_gatk('print_reads_gatk', gatk_args)
 
 
     def call_variants_gatk(self, bam_in, vcf_out):
@@ -177,7 +177,7 @@ class Stages(object):
                     "--standard_min_confidence_threshold_for_emitting 30.0 " \
                     "-I {bam} -L {interval_list} -o {out}".format(reference=self.reference,
                             bam=bam_in, interval_list=self.interval_grch37, out=vcf_out)
-        run_gatk('call_variants_gatk', gatk_args)
+        self.run_gatk('call_variants_gatk', gatk_args)
 
 
     def combine_gvcf_gatk(self, vcf_files_in, vcf_out):
@@ -187,7 +187,7 @@ class Stages(object):
                     "--disable_auto_index_creation_and_locking_when_reading_rods " \
                     "{g_vcf_files} -o {vcf_out}".format(reference=self.reference,
                         g_vcf_files=g_vcf_files, vcf_out=vcf_out)
-        run_gatk('combine_gvcf_gatk', gatk_args)
+        self.run_gatk('combine_gvcf_gatk', gatk_args)
 
 
     def genotype_gvcf_gatk(self, merged_vcf_in, vcf_out):
@@ -201,4 +201,4 @@ class Stages(object):
                             cores=cores, merged_vcf=merged_vcf_in, vcf_out=vcf_out,
                             CEU_mergeGvcf=self.CEU_mergeGvcf, GBR_mergeGvcf=self.GBR_mergeGvcf,
                             FIN_mergeGvcf=self.FIN_mergeGvcf)
-        run_gatk('genotype_gvcf_gatk', gatk_args)
+        self.run_gatk('genotype_gvcf_gatk', gatk_args)
