@@ -32,12 +32,17 @@ class Stages(object):
     def __init__(self, state):
         self.state = state
         self.reference = self.get_options('ref_grch37')
+        self.dbsnp_grch37 = self.get_options('dbsnp_grch37')
         self.mills_grch37 = self.get_options('mills_grch37')
         self.one_k_g_grch37_indels = self.get_options('one_k_g_grch37_indels')
+        self.one_k_g_snps = self.get_options('one_k_g_snps')
+        self.one_k_g_indels = self.get_options('one_k_g_indels')
+        self.one_k_g_highconf_snps = self.get_options('one_k_g_highconf_snps')
+        self.hapmap = self.get_options('hapmap')
         self.interval_grch37 = self.get_options('interval_grch37')
-        #self.CEU_mergeGvcf = self.get_options('CEU_mergeGvcf')
-        #self.GBR_mergeGvcf = self.get_options('GBR_mergeGvcf')
-        #self.FIN_mergeGvcf = self.get_options('FIN_mergeGvcf')
+        self.CEU_mergeGvcf = self.get_options('CEU_mergeGvcf')
+        self.GBR_mergeGvcf = self.get_options('GBR_mergeGvcf')
+        self.FIN_mergeGvcf = self.get_options('FIN_mergeGvcf')
 
     def run_picard(self, stage, args):
         mem = int(self.state.config.get_stage_options(stage, 'mem'))
@@ -55,26 +60,9 @@ class Stages(object):
         return self.state.config.get_options(*options)
 
 
-    # def original_reference(self, output):
-    #     '''Original reference file'''
-    #     pass
-
-
     def original_fastqs(self, output):
         '''Original fastq files'''
         pass
-
-
-    #def index_reference_bwa(self, reference_in, index_file_out):
-    #    '''Index the reference genome using BWA'''
-    #    command = "bwa index -a bwtsw {ref}".format(ref=reference_in)
-    #    run_stage(self.state, 'index_reference_bwa', command)
-    #
-
-    #def index_reference_samtools(self, reference_in, index_file_out):
-    #    '''Index the reference genome using samtools'''
-    #    command = 'samtools faidx {ref}'.format(ref=reference_in)
-    #    run_stage(self.state, 'index_reference_samtools', command)
 
 
     def align_bwa(self, inputs, bam_out, sample_id):
@@ -192,7 +180,7 @@ class Stages(object):
 
     def genotype_gvcf_gatk(self, merged_vcf_in, vcf_out):
         '''Genotype G.VCF files using GATK'''
-        cores = self.get_stage_option('genotype_gvcf_gatk', 'cores')
+        cores = self.get_stage_options('genotype_gvcf_gatk', 'cores')
         gatk_args = "-T GenotypeGVCFs -R {reference} " \
                     "--disable_auto_index_creation_and_locking_when_reading_rods " \
                     "--num_threads {cores} --variant {merged_vcf} --out {vcf_out} " \
@@ -202,3 +190,84 @@ class Stages(object):
                             CEU_mergeGvcf=self.CEU_mergeGvcf, GBR_mergeGvcf=self.GBR_mergeGvcf,
                             FIN_mergeGvcf=self.FIN_mergeGvcf)
         self.run_gatk('genotype_gvcf_gatk', gatk_args)
+
+
+    def snp_recalibrate_gatk(self, genotype_vcf_in, outputs):
+        '''SNP recalibration using GATK'''
+        recal_snp_out, tranches_snp_out, snp_plots_r_out = outputs
+        cores = self.get_stage_options('snp_recalibrate_gatk', 'cores')
+        gatk_args = "-T VariantRecalibrator --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "-R {reference} --minNumBadVariants 5000 --num_threads {cores} " \
+                    "-resource:hapmap,known=false,training=true,truth=true,prior=15.0 {hapmap} " \
+                    "-resource:omni,known=false,training=true,truth=true,prior=12.0 {one_k_g_snps} " \
+                    "-resource:1000G,known=false,training=true,truth=false,prior=10.0 {one_k_g_highconf_snps} " \
+                    "-an QD -an MQRankSum -an ReadPosRankSum -an FS -an InbreedingCoeff " \
+                    "-input {genotype_vcf} --recal_file {recal_snp} --tranches_file {tranches_snp} " \
+                    "-rscriptFile {snp_plots} -mode SNP".format(reference=self.reference,
+                            cores=cores, hapmap=self.hapmap, one_k_g_snps=self.one_k_g_snps,
+                            one_k_g_highconf_snps=self.one_k_g_highconf_snps, genotype_vcf=genotype_vcf_in,
+                            recal_snp=recal_snp_out, tranches_snp=tranches_snp_out, snp_plots=snp_plots_r_out)
+        self.run_gatk('snp_recalibrate_gatk', gatk_args)
+
+
+    def indel_recalibrate_gatk(self, genotype_vcf_in, outputs):
+        '''INDEL recalibration using GATK'''
+        recal_indel_out, tranches_indel_out, indel_plots_r_out = outputs
+        cores = self.get_stage_options('indel_recalibrate_gatk', 'cores')
+        gatk_args = "-T VariantRecalibrator --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "-R {reference} --minNumBadVariants 5000 --num_threads {cores} " \
+                    "-resource:mills,known=false,training=true,truth=true,prior=12.0 {mills_grch37} " \
+                    "-resource:1000G,known=false,training=true,truth=true,prior=10.0 {one_k_g_indels} " \
+                    "-an MQRankSum -an ReadPosRankSum -an FS -input {genotype_vcf} -recalFile {recal_indel} " \
+                    "-tranchesFile {tranches_indel} -rscriptFile {indel_plots} " \
+                    " -mode INDEL".format(reference=self.reference,
+                            cores=cores, mills_grch37=self.mills_grch37, one_k_g_indels=self.one_k_g_indels,
+                            genotype_vcf=genotype_vcf_in, recal_indel=recal_indel_out,
+                            tranches_indel=tranches_indel_out, indel_plots=indel_plots_r_out)
+        self.run_gatk('indel_recalibrate_gatk', gatk_args)
+
+
+    def apply_snp_recalibrate_gatk(self, inputs, vcf_out):
+        '''Apply SNP recalibration using GATK'''
+        genotype_vcf_in, [recal_snp, tranches_snp] = inputs 
+        cores = self.get_stage_options('apply_snp_recalibrate_gatk', 'cores')
+        gatk_args = "-T ApplyRecalibration --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "-R {reference} --ts_filter_level 99.5 --excludeFiltered --num_threads {cores} " \
+                    "-input {genotype_vcf} -recalFile {recal_snp} -tranchesFile {tranches_snp} " \
+                    "-mode SNP -o {vcf_out}".format(reference=self.reference,
+                            cores=cores, genotype_vcf=genotype_vcf_in, recal_snp=recal_snp,
+                            tranches_snp=tranches_snp, vcf_out=vcf_out)
+        self.run_gatk('apply_snp_recalibrate_gatk', gatk_args)
+
+
+    def apply_indel_recalibrate_gatk(self, inputs, vcf_out):
+        '''Apply INDEL recalibration using GATK'''
+        genotype_vcf_in, [recal_indel, tranches_indel] = inputs 
+        cores = self.get_stage_options('apply_indel_recalibrate_gatk', 'cores')
+        gatk_args = "-T ApplyRecalibration --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "-R {reference} --ts_filter_level 99.0 --excludeFiltered --num_threads {cores} " \
+                    "-input {genotype_vcf} -recalFile {recal_indel} -tranchesFile {tranches_indel} " \
+                    "-mode INDEL -o {vcf_out}".format(reference=self.reference,
+                            cores=cores, genotype_vcf=genotype_vcf_in, recal_indel=recal_indel,
+                            tranches_indel=tranches_indel, vcf_out=vcf_out)
+        self.run_gatk('apply_indel_recalibrate_gatk', gatk_args)
+
+
+    def combine_variants_gatk(self, inputs, vcf_out):
+        '''Combine variants using GATK'''
+        recal_snp, [recal_indel] = inputs 
+        cores = self.get_stage_options('combine_variants_gatk', 'cores')
+        gatk_args = "-T CombineVariants -R {reference} --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "--num_threads {cores} --genotypemergeoption UNSORTED --variant {recal_snp} " \
+                    "--variant {recal_indel} -o {vcf_out}".format(reference=self.reference,
+                            cores=cores, recal_snp=recal_snp, recal_indel=recal_indel,
+                            vcf_out=vcf_out)
+        self.run_gatk('combine_variants_gatk', gatk_args)
+
+
+    def select_variants_gatk(self, combined_vcf, vcf_out):
+        '''Select variants using GATK'''
+        gatk_args = "-T SelectVariants -R {reference} --disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "--variant {combined_vcf} -select 'DP > 100' -o {vcf_out}".format(reference=self.reference,
+                            combined_vcf=combined_vcf, vcf_out=vcf_out)
+        self.run_gatk('select_variants_gatk', gatk_args)

@@ -12,18 +12,8 @@ def make_pipeline(state):
     pipeline = Pipeline(name='complexo')
     # Get a list of paths to all the FASTQ files
     fastq_files = state.config.get_option('fastqs')
-    # Find the path to the reference genome
-    #reference_file = state.config.get_option('ref_grch37')
     # Stages are dependent on the state
     stages = Stages(state)
-
-    # The original reference file
-    # This is a dummy stage. It is useful because it makes a node in the
-    # pipeline graph, and gives the pipeline an obvious starting point.
-    #pipeline.originate(
-    #    task_func=stages.original_reference,
-    #    name='original_reference',
-    #    output=reference_file)
 
     # The original FASTQ files
     # This is a dummy stage. It is useful because it makes a node in the
@@ -32,23 +22,6 @@ def make_pipeline(state):
         task_func=stages.original_fastqs,
         name='original_fastqs',
         output=fastq_files)
-
-    ## Index the reference using BWA 
-    ## XXX Maybe theses stages of indexing the reference should not be part of the pipeline?
-    #pipeline.transform(
-    #    task_func=stages.index_reference_bwa,
-    #    name='index_reference_bwa',
-    #    input=output_from('original_reference'),
-    #    filter=suffix('.fasta'),
-    #    output=['.fasta.amb', '.fasta.ann', '.fasta.pac', '.fasta.sa', '.fasta.bwt'])
-    #
-    ## Index the reference using samtools 
-    #pipeline.transform(
-    #    task_func=stages.index_reference_samtools,
-    #    name='index_reference_samtools',
-    #    input=output_from('original_reference'),
-    #    filter=suffix('.fasta'),
-    #    output='.fasta.fai')
 
     # Align paired end reads in FASTQ to the reference producing a BAM file
     pipeline.transform(
@@ -138,12 +111,66 @@ def make_pipeline(state):
         input=output_from('call_variants_gatk'),
         output='PCExomes.mergegvcf.vcf')
 
-    ## Genotype G.VCF files using GATK 
-    #pipeline.transform(
-    #    task_func=stages.genotype_gvcf_gatk,
-    #    name='genotype_gvcf_gatk',
-    #    input=output_from('combine_gvcf_gatk'),
-    #    #filter=suffix('.raw.snps.indels.g.vcf'),
-    #    output='PCExomes.genotyped.vcf')
+    # Genotype G.VCF files using GATK 
+    pipeline.transform(
+        task_func=stages.genotype_gvcf_gatk,
+        name='genotype_gvcf_gatk',
+        input=output_from('combine_gvcf_gatk'),
+        filter=suffix('.mergegvcf.vcf'),
+        output='.genotyped.vcf')
+
+    # SNP recalibration using GATK
+    pipeline.transform(
+        task_func=stages.snp_recalibrate_gatk,
+        name='snp_recalibrate_gatk',
+        input=output_from('genotype_gvcf_gatk'),
+        filter=suffix('.genotyped.vcf'),
+        output=['.snp_recal', '.snp_tranches', '.snp_plots.R'])
+
+    # INDEL recalibration using GATK
+    pipeline.transform(
+        task_func=stages.indel_recalibrate_gatk,
+        name='indel_recalibrate_gatk',
+        input=output_from('genotype_gvcf_gatk'),
+        filter=suffix('.genotyped.vcf'),
+        output=['.indel_recal', '.indel_tranches', '.indel_plots.R'])
+
+    # Apply SNP recalibration using GATK  
+    (pipeline.transform(
+        task_func=stages.apply_snp_recalibrate_gatk,
+        name='apply_snp_recalibrate_gatk',
+        input=output_from('genotype_gvcf_gatk'),
+        filter=suffix('.genotyped.vcf'),
+        add_inputs=add_inputs(['PCExomes.snp_recal', 'PCExomes.snp_tranches']),
+        output='.recal_SNP.vcf')
+        .follows('snp_recalibrate_gatk'))
+
+    # Apply INDEL recalibration using GATK  
+    (pipeline.transform(
+        task_func=stages.apply_indel_recalibrate_gatk,
+        name='apply_indel_recalibrate_gatk',
+        input=output_from('genotype_gvcf_gatk'),
+        filter=suffix('.genotyped.vcf'),
+        add_inputs=add_inputs(['PCExomes.indel_recal', 'PCExomes.indel_tranches']),
+        output='.recal_INDEL.vcf')
+        .follows('indel_recalibrate_gatk'))
+
+    # Combine variants using GATK  
+    (pipeline.transform(
+        task_func=stages.combine_variants_gatk,
+        name='combine_variants_gatk',
+        input=output_from('apply_snp_recalibrate_gatk'),
+        filter=suffix('.recal_SNP.vcf'),
+        add_inputs=add_inputs(['PCExomes.recal_INDEL.vcf']),
+        output='.combined.vcf')
+        .follows('apply_indel_recalibrate_gatk'))
+
+    # Select variants using GATK 
+    pipeline.transform(
+        task_func=stages.select_variants_gatk,
+        name='select_variants_gatk',
+        input=output_from('combine_variants_gatk'),
+        filter=suffix('.combined.vcf'),
+        output='.selected.vcf')
 
     return pipeline
