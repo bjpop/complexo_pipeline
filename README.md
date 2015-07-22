@@ -187,20 +187,6 @@ defaults:
 # the pipeine to find the settings for the stage.
 
 stages:
-    # Index the human genome reference with BWA
-    index_reference_bwa:
-        walltime: '5:00'
-        mem: 8
-        modules:
-            - 'bwa-intel/0.7.12'
-    
-    # Index the hg19 human genome reference with samtools
-    index_reference_samtools:
-        walltime: '00:30'
-        mem: 8 
-        modules:
-            - 'samtools-intel/1.1'
-    
     # Align paired end FASTQ files to the reference
     align_bwa:
         cores: 8
