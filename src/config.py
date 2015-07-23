@@ -75,10 +75,11 @@ class Config(object):
         '''Check that the configuration is valid.'''
         config = self.config
         filename = self.config_filename
-        # Test for required fields: defaults, stages, fastqs
+        # Test for required fields: defaults, stages, fastqs, pipeline_id
         check_required_field(config, filename, 'defaults')
         check_required_field(config, filename, 'stages')
         check_required_field(config, filename, 'fastqs')
+        check_required_field(config, filename, 'pipeline_id')
 
 
 

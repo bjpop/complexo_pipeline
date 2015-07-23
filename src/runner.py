@@ -45,6 +45,8 @@ def run_stage(state, stage, command):
     walltime = config.get_stage_option(stage, 'walltime')
     run_local = config.get_stage_option(stage, 'local')
     cores = config.get_stage_option(stage, 'cores')
+    pipeline_id = config.get_option('pipeline_id')
+    job_name = pipeline_id + '_' + stage
 
     # Generate a "module load" command for each required module
     module_loads = '\n'.join(['module load ' + module for module in modules])
@@ -66,7 +68,7 @@ def run_stage(state, stage, command):
     try:
         stdout_res, stderr_res = \
             run_job(cmd_str=cluster_command,
-                job_name = stage,
+                job_name = job_name,
                 logger = state.logger.proxy,
                 drmaa_session = state.drmaa_session,
                 # Determines whether to run the command on the local
