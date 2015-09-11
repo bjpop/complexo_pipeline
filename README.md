@@ -36,13 +36,13 @@ I recommend using a virtual environment:
 cd /place/to/install
 virtualenv complexo_pipeline
 source complexo_pipeline/bin/activate
-pip install -U https://github.com/bjpop/complexo_pipeline
+pip install -U git+https://github.com/bjpop/complexo_pipeline
 ```
 
 If you don't want to use a virtual environment then you can just install with pip:
 
 ```
-pip install -U https://github.com/bjpop/complexo_pipeline
+pip install -U git+https://github.com/bjpop/complexo_pipeline
 ```
 
 ## Worked example
