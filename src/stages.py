@@ -34,7 +34,6 @@ class Stages(object):
         self.reference = self.get_options('ref_grch37')
         self.dbsnp_grch37 = self.get_options('dbsnp_grch37')
         self.mills_grch37 = self.get_options('mills_grch37')
-        self.one_k_g_grch37_indels = self.get_options('one_k_g_grch37_indels')
         self.one_k_g_snps = self.get_options('one_k_g_snps')
         self.one_k_g_indels = self.get_options('one_k_g_indels')
         self.one_k_g_highconf_snps = self.get_options('one_k_g_highconf_snps')
@@ -107,10 +106,10 @@ class Stages(object):
         cores = self.get_stage_options('chrom_intervals_gatk', 'cores')
         gatk_args = '-T RealignerTargetCreator -R {reference} -I {bam} ' \
                     '--num_threads {threads} --known {mills_grch37} ' \
-                    '--known {one_k_g_grch37_indels} -L {interval_grch37} ' \
+                    '--known {one_k_g_indels} -L {interval_grch37} ' \
                     '-o {out}'.format(reference=self.reference, bam=bam_in,
                             threads=cores, mills_grch37=self.mills_grch37,
-                            one_k_g_grch37_indels=self.one_k_g_grch37_indels,
+                            one_k_g_indels=self.one_k_g_indels,
                             interval_grch37=self.interval_grch37,
                             out=intervals_out)
         self.run_gatk('chrom_intervals_gatk', gatk_args)
@@ -121,10 +120,10 @@ class Stages(object):
         target_intervals_in, bam_in = inputs
         gatk_args = "-T IndelRealigner -R {reference} -I {bam} -L {interval_grch37} " \
                     "-targetIntervals {target_intervals} -known {mills_grch37} " \
-                    "-known {one_k_g_grch37_indels} " \
+                    "-known {one_k_g_indels} " \
                     "-o {out}".format(reference=self.reference, bam=bam_in,
                             mills_grch37=self.mills_grch37,
-                            one_k_g_grch37_indels=self.one_k_g_grch37_indels,
+                            one_k_g_indels=self.one_k_g_indels,
                             interval_grch37=self.interval_grch37,
                             target_intervals=target_intervals_in,
                             out=bam_out)
@@ -137,10 +136,10 @@ class Stages(object):
         csv_out, log_out = outputs
         gatk_args = "-T BaseRecalibrator -R {reference} -I {bam} " \
                     "--num_cpu_threads_per_data_thread 4 --knownSites {dbsnp_grch37} " \
-                    "--knownSites {mills_grch37} --knownSites {one_k_g_grch37_indels} " \
+                    "--knownSites {mills_grch37} --knownSites {one_k_g_indels} " \
                     "-log {log} -o {out}".format(reference=self.reference, bam=bam_in,
                             mills_grch37=self.mills_grch37, dbsnp_grch37=self.dbsnp_grch37,
-                            one_k_g_grch37_indels=self.one_k_g_grch37_indels,
+                            one_k_g_indels=self.one_k_g_indels,
                             log=log_out, out=csv_out)
         self.run_gatk('base_recalibration_gatk', gatk_args)
 
